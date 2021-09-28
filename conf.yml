@@ -1,0 +1,21 @@
+# Уровень журналирования событий
+# Может принимать значения: debug, info, warn, error, fatal
+loglevel: "info"
+
+# Параметры подключения к почтовому серверу по SMTP протоколу
+smtp:
+  # Адрес отправителя писем. Будет использоваться в заголовке FROM
+  from: "username@yandex.ru"
+  # Логин учетной записи на почтовом сервере
+  username: "username"
+  # Пароль учетной записи на почтовом сервере
+  password: "secret"
+  # Адрес почтового сервера и порт, на котором доступен SMTP интерфейс
+  server: "smtp.yandex.ru"
+  port: 25
+
+# Массив адресатов
+toList:
+  - "receiver1@yandex.ru"
+  - "receiver2@yandex.ru"
+  - "receiver3@yandex.ru"

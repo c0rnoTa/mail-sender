@@ -5,8 +5,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
-	"os"
-	"time"
+	"sync"
 )
 
 // Здесь все активные хэндлеры приложения
@@ -21,6 +20,8 @@ func main() {
 
 	var App MyApp
 
+	var wg sync.WaitGroup
+
 	// Читаем конфиг
 	App.GetConfigYaml("conf.yml")
 
@@ -28,7 +29,7 @@ func main() {
 	log.SetLevel(App.logLevel)
 
 	// This is the message to send in the mail
-	subject := "Письмо от mail-sender"
+	subject := "Test mail"
 	msg := "Проверка доставки сообщения."
 
 	// PlainAuth uses the given username and password to
@@ -37,17 +38,18 @@ func main() {
 	// to act as username.
 	App.auth = smtp.PlainAuth("", App.config.Smtp.Username, App.config.Smtp.Password, App.config.Smtp.Server)
 	log.Info("Use auth ", App.config.Smtp.Username, " at ", App.config.Smtp.Server, ":", App.config.Smtp.Port)
-
-	for _, toAddr := range App.config.ToList {
-
-		go App.sendEmail(toAddr, subject, msg)
+	log.Info("Start senders")
+	for i, toAddr := range App.config.ToList {
+		wg.Add(i)
+		go App.sendEmail(&wg, toAddr, subject, msg)
 	}
-
-	time.Sleep(15 * time.Second)
+	log.Info("Wait until all senders done")
+	wg.Wait()
 	log.Info("Successfully sent mail to all user in toList")
 }
 
-func (a MyApp) sendEmail(toAddr string, subject string, message string) {
+func (a MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, message string) {
+	defer wg.Done()
 	log.Info("Sending e-mail to ", toAddr)
 	err := smtp.SendMail(
 		fmt.Sprintf("%s:%d", a.config.Smtp.Server, a.config.Smtp.Port),
@@ -61,6 +63,5 @@ func (a MyApp) sendEmail(toAddr string, subject string, message string) {
 	// handling the errors
 	if err != nil {
 		log.Error(err)
-		os.Exit(1)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
 	"sync"
+	"time"
 )
 
 // Здесь все активные хэндлеры приложения
@@ -39,8 +40,8 @@ func main() {
 	App.auth = smtp.PlainAuth("", App.config.Smtp.Username, App.config.Smtp.Password, App.config.Smtp.Server)
 	log.Info("Use auth ", App.config.Smtp.Username, " at ", App.config.Smtp.Server, ":", App.config.Smtp.Port)
 	log.Info("Start senders")
-	for i, toAddr := range App.config.ToList {
-		wg.Add(i)
+	for _, toAddr := range App.config.ToList {
+		wg.Add(1)
 		go App.sendEmail(&wg, toAddr, subject, msg)
 	}
 	log.Info("Wait until all senders done")
@@ -51,17 +52,20 @@ func main() {
 func (a MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, message string) {
 	defer wg.Done()
 	log.Info("Sending e-mail to ", toAddr)
+	body := fmt.Sprintf("To: %s\r\nFrom: %s\r\nSubject: %s\r\n\r\n%s\r\n", toAddr, a.config.Smtp.FromAddr, subject, message)
 	err := smtp.SendMail(
 		fmt.Sprintf("%s:%d", a.config.Smtp.Server, a.config.Smtp.Port),
 		a.auth,
 		a.config.Smtp.FromAddr,
 		[]string{toAddr},
-		[]byte(fmt.Sprintf("To: %s\r\nFrom: %s\r\nSubject: %s\r\n\r\n%s\r\n", toAddr, a.config.Smtp.FromAddr, subject, message)),
+		[]byte("MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n"+body),
 	)
-	log.Info("Message successfully send to ", toAddr)
 
 	// handling the errors
 	if err != nil {
 		log.Error(err)
+		log.Error("Message failed to ", toAddr, " at ", time.Now())
+		return
 	}
+	log.Info("Message successfully send to ", toAddr, " at ", time.Now())
 }

@@ -2,6 +2,7 @@
 package main
 
 import (
+	b64 "encoding/base64"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
@@ -30,8 +31,8 @@ func main() {
 	log.SetLevel(App.logLevel)
 
 	// This is the message to send in the mail
-	subject := "Test mail"
-	msg := "Проверка доставки сообщения."
+	subject := "Проверка отправки сообщения"
+	msg := "<h1>Привет!</h1>Это проверка доставки сообщения.<br>С уважением,<br>Ваш скрипт!"
 
 	// PlainAuth uses the given username and password to
 	// authenticate to host and act as identity.
@@ -52,13 +53,13 @@ func main() {
 func (a MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, message string) {
 	defer wg.Done()
 	log.Info("Sending e-mail to ", toAddr)
-	body := fmt.Sprintf("To: %s\r\nFrom: %s\r\nSubject: %s\r\n\r\n%s\r\n", toAddr, a.config.Smtp.FromAddr, subject, message)
+	body := fmt.Sprintf("To: %s\r\nFrom: %s\r\nSubject: =?utf-8?B?%s?=\r\n\r\n%s\r\n", toAddr, a.config.Smtp.FromAddr, b64.StdEncoding.EncodeToString([]byte(subject)), message)
 	err := smtp.SendMail(
 		fmt.Sprintf("%s:%d", a.config.Smtp.Server, a.config.Smtp.Port),
 		a.auth,
 		a.config.Smtp.FromAddr,
 		[]string{toAddr},
-		[]byte("MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n"+body),
+		[]byte("MIME-version: 1.0\r\nContent-Type: text/html; charset=\"UTF-8\"\r\n"+body),
 	)
 
 	// handling the errors

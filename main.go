@@ -32,7 +32,7 @@ func main() {
 
 	// This is the message to send in the mail
 	subject := "Проверка отправки сообщения"
-	msg := "<h1>Привет!</h1>Это проверка доставки сообщения.<br>С уважением,<br>Ваш скрипт!"
+	msg := "<html><h1>Привет!</h1>Это проверка доставки сообщения.<br>С уважением,<br>Ваш скрипт!</html>"
 
 	// PlainAuth uses the given username and password to
 	// authenticate to host and act as identity.

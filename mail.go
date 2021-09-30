@@ -68,49 +68,57 @@ func (App *MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, m
 }
 
 // Запуск получения почты
-func (App *MyApp) RunReceiver(i int) {
-	var err error
-	log.Info("Start mail receiver", i, ":", App.config.Imap.Receivers[i].Mail)
+func (a *MyApp) RunReceiver(i int) {
+
+	log.Info("Start mail receiver", i, ":", a.config.Imap.Receivers[i].Mail)
 
 	// Подключаемся к серверу IMAP
-	log.Info("Receiver ", i, " connecting to imap://", App.config.Imap.Receivers[i].Server)
-	App.imapClient[i], err = client.DialTLS(App.config.Imap.Receivers[i].Server, nil)
+	log.Info("Receiver ", i, " connecting to imap://", a.config.Imap.Receivers[i].Server)
+	tmpClinet, err := client.DialTLS(a.config.Imap.Receivers[i].Server, nil)
 	if err != nil {
 		log.Error("IMAP TLS connection returned error: ", err)
 		return
 	}
+
+	if len(a.imapClient) == i { // nil or empty slice or after last element
+		a.imapClient = append(a.imapClient, tmpClinet)
+	} else {
+		a.imapClient = append(a.imapClient[:i+1], a.imapClient[i:]...) // index < len(a)
+		a.imapClient[i] = tmpClinet
+	}
+
 	log.Info("Receiver ", i, " IMAP Connected")
 
 	// Don't forget to logout from IMAP server
 	defer func() {
-		err = App.imapClient[i].Logout()
+		err = a.imapClient[i].Logout()
 		if err != nil {
 			log.Error("Receiver ", i, "IMAP Logout error: ", err)
 		}
-		err = App.imapClient[i].Terminate()
+		err = a.imapClient[i].Terminate()
 		if err != nil {
 			log.Error("Receiver ", i, " IMAP Terminate error: ", err)
 		}
 	}()
 
 	// Login
-	err = App.imapClient[i].Login(App.config.Imap.Receivers[i].Username, App.config.Imap.Receivers[i].Password)
+	err = a.imapClient[i].Login(a.config.Imap.Receivers[i].Username, a.config.Imap.Receivers[i].Password)
 	if err != nil {
 		log.Error("Receiver ", i, " IMAP login returned error: ", err)
 		return
 	}
-	log.Info("Receiver ", i, " IMAP Logged in as ", App.config.Imap.Receivers[i].Username)
+	log.Info("Receiver ", i, " IMAP Logged in as ", a.config.Imap.Receivers[i].Username)
 
 	// Выбираем папку INBOX на почтовом сервере
 	log.Infof("Receiver %d Select %s mailbox", i, "INBOX")
-	_, err = App.imapClient[i].Select("INBOX", false)
+	_, err = a.imapClient[i].Select("INBOX", false)
 	if err != nil {
 		log.Error("Receiver ", i, " IMAP Mailbox folder select returned error: ", err)
 		return
 	}
 
 	// Дальше в бесконечном цикле ищем новые сообщения и сохраняем время получения письма
-	App.ReadNewMail(i)
+	a.ReadNewMail(i)
 	return
 }
 

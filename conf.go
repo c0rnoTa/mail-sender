@@ -22,6 +22,7 @@ type Config struct {
 		Password string `yaml:"password"`
 		Server   string `yaml:"server"`
 		Port     int    `yaml:"port"`
+		Enable   bool   `yaml:"enable"`
 	} `yaml:"smtp"`
 	DB struct {
 		Host     string `yaml:"host"`

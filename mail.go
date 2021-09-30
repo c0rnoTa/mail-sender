@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	b64 "encoding/base64"
 	"fmt"
+	"github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
@@ -61,6 +63,131 @@ func (App *MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, m
 
 	_, err = DBStmt.Exec(toAddr, status, status)
 	if err != nil {
-		log.Error("Could not execute UPDATE statement for `ad_task`: ", err)
+		log.Error("Could not execute UPDATE statement for `sender`: ", err)
 	}
+}
+
+// Запуск получения почты
+func (App *MyApp) RunReceiver(i int) {
+	var err error
+	log.Info("Start mail receiver", i, ":", App.config.Imap.Receivers[i].Mail)
+
+	// Подключаемся к серверу IMAP
+	log.Info("Receiver ", i, " connecting to imap://", App.config.Imap.Receivers[i].Server)
+	App.imapClient[i], err = client.DialTLS(App.config.Imap.Receivers[i].Server, nil)
+	if err != nil {
+		log.Error("IMAP TLS connection returned error: ", err)
+		return
+	}
+	log.Info("Receiver ", i, " IMAP Connected")
+
+	// Don't forget to logout from IMAP server
+	defer func() {
+		err = App.imapClient[i].Logout()
+		if err != nil {
+			log.Error("Receiver ", i, "IMAP Logout error: ", err)
+		}
+		err = App.imapClient[i].Terminate()
+		if err != nil {
+			log.Error("Receiver ", i, " IMAP Terminate error: ", err)
+		}
+	}()
+
+	// Login
+	err = App.imapClient[i].Login(App.config.Imap.Receivers[i].Username, App.config.Imap.Receivers[i].Password)
+	if err != nil {
+		log.Error("Receiver ", i, " IMAP login returned error: ", err)
+		return
+	}
+	log.Info("Receiver ", i, " IMAP Logged in as ", App.config.Imap.Receivers[i].Username)
+
+	// Выбираем папку INBOX на почтовом сервере
+	log.Infof("Receiver %d Select %s mailbox", i, "INBOX")
+	_, err = App.imapClient[i].Select("INBOX", false)
+	if err != nil {
+		log.Error("Receiver ", i, " IMAP Mailbox folder select returned error: ", err)
+		return
+	}
+
+	// Дальше в бесконечном цикле ищем новые сообщения и сохраняем время получения письма
+	App.ReadNewMail(i)
+	return
+}
+
+// ReadNewMail Уведомляем о новых письмах
+func (a *MyApp) ReadNewMail(i int) {
+	log.Info("Receiver ", i, " mailbox pooler starting")
+
+	// Установка критериев отбора писем в папке
+	criteria := imap.NewSearchCriteria()
+	criteria.WithoutFlags = []string{"\\Seen"}
+
+	// Регистрируем statement для отметки полученных писем
+	sqlMailReceive := fmt.Sprintf("INSERT INTO %s (receiver,receive_status,receive_time) VALUES (?,?,NOW()) ON DUPLICATE KEY UPDATE receive_status=?, receive_time=NOW()", a.config.DB.Table)
+	DBStmt, err := a.db.Prepare(sqlMailReceive)
+	defer DBStmt.Close()
+	if err != nil {
+		log.Error("Could not register INSERT statement `sqlMailReceive`: ", err)
+		return
+	}
+
+	// В бесконечном цикле проверяем почтовый ящик на новые письма
+	for range time.NewTicker(time.Duration(a.config.Imap.RefreshTimeout) * time.Second).C {
+		// Проверяем новые письма
+		err := a.imapClient[i].Noop()
+		if err != nil {
+			log.Error("Receiver ", i, " IMAP Mailbox refresh returned error: ", err)
+			log.Debug("Receiver ", i, " IMAP connection status: ", a.imapClient[i].State())
+			return
+		}
+
+		// Получаем UID-ы непрочитанных писем
+		uids, err := a.imapClient[i].Search(criteria)
+		if err != nil {
+			log.Error("Receiver ", i, " IMAP mail search returned error: ", err)
+			return
+		}
+		// Если UID-ов нет, то новых писем нет
+		if len(uids) == 0 {
+			log.Debug("Receiver ", i, " No new messages yet.")
+			continue
+		}
+
+		log.Info("Receiver ", i, " There are ", len(uids), " new messages")
+		seqset := new(imap.SeqSet)
+		seqset.AddNum(uids...)
+
+		// Инициализируем канал обработки полученных писем
+		messages := make(chan *imap.Message, 10)
+		// Отдельным потоком отгружаем найденные письма в канал
+		go func() {
+			err := a.imapClient[i].Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages)
+			if err != nil {
+				log.Error("Receiver ", i, " IMAP mail fetch error: ", err)
+			}
+		}()
+
+		// Обрабатываем каждое новое письмо
+		for msg := range messages {
+			log.Info("Receiver ", i, " * "+msg.Envelope.Subject)
+			// Сохраняем информацию о получении письма
+			_, err = DBStmt.Exec(a.config.Imap.Receivers[i].Mail, 1, 1)
+			if err != nil {
+				log.Error("Could not execute UPDATE statement for `receiver`: ", err)
+			}
+			// Помечаем письмо как прочитанное
+			curSeq := new(imap.SeqSet)
+			curSeq.AddNum(msg.SeqNum)
+			markFlag := imap.SeenFlag
+			// или удаляем письмо
+			if a.config.Imap.DeleteMessages {
+				markFlag = imap.DeletedFlag
+			}
+			err := a.imapClient[i].Store(curSeq, imap.FormatFlagsOp(imap.AddFlags, true), []interface{}{markFlag}, nil)
+			if err != nil {
+				log.Error("Receiver ", i, " IMAP mark mail as ", markFlag, " error: ", err)
+			}
+		}
+	}
+
 }

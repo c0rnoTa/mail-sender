@@ -3,6 +3,7 @@ package main
 
 import (
 	"database/sql"
+	"github.com/emersion/go-imap/client"
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
 	"os"
@@ -10,10 +11,11 @@ import (
 
 // Здесь все активные хэндлеры приложения
 type MyApp struct {
-	config   Config
-	logLevel log.Level
-	auth     smtp.Auth
-	db       *sql.DB
+	config     Config
+	logLevel   log.Level
+	auth       smtp.Auth
+	db         *sql.DB
+	imapClient []*client.Client
 }
 
 // Main function
@@ -39,7 +41,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Запускаем отправку писем
-	App.RunSender(subject, msg)
+	// Запускаем получение почты
+	for i, _ := range App.config.Imap.Receivers {
+		go App.RunReceiver(i)
+	}
 
+	log.Info("All receivers are started")
+
+	if App.config.Smtp.Enable {
+		// Запускаем отправку писем
+		App.RunSender(subject, msg)
+	}
+
+	// TODO Сюда можно добавить проверку статуса подключений и их восстановление в цикле
+	ch := make(chan bool)
+	<-ch
 }

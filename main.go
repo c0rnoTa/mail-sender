@@ -41,12 +41,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Запускаем получение почты
-	for i, _ := range App.config.Imap.Receivers {
-		go App.RunReceiver(i)
+	if App.config.Imap.Enable {
+		// Запускаем получение почты
+		for i, _ := range App.config.Imap.Receivers {
+			go App.RunReceiver(i)
+		}
+		log.Info("All receivers are started")
 	}
-
-	log.Info("All receivers are started")
 
 	if App.config.Smtp.Enable {
 		// Запускаем отправку писем

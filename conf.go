@@ -39,6 +39,7 @@ type Config struct {
 		Username       string     `yaml:"username"`
 		Password       string     `yaml:"password"`
 		Server         string     `yaml:"server"`
+		Enable         bool       `yaml:"enable"`
 	} `yaml:"imap"`
 	ToList   []string `yaml:"toList,flow"`
 	LogLevel string   `yaml:"loglevel"`

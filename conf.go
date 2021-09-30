@@ -6,6 +6,14 @@ import (
 	"io/ioutil"
 )
 
+// Структура параметров подключения к ресиверу
+type Receiver struct {
+	Mail     string `yaml:"mail"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Server   string `yaml:"server"`
+}
+
 // Структура конфигурационного файла
 type Config struct {
 	Smtp struct {
@@ -23,6 +31,14 @@ type Config struct {
 		Database string `yaml:"database"`
 		Table    string `yaml:"table"`
 	} `yaml:"mysql"`
+	Imap struct {
+		RefreshTimeout int64      `yaml:"refresh"`
+		DeleteMessages bool       `yaml:"delete"`
+		Receivers      []Receiver `yaml:"receivers,flow"`
+		Username       string     `yaml:"username"`
+		Password       string     `yaml:"password"`
+		Server         string     `yaml:"server"`
+	} `yaml:"imap"`
 	ToList   []string `yaml:"toList,flow"`
 	LogLevel string   `yaml:"loglevel"`
 }

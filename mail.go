@@ -80,12 +80,15 @@ func (a *MyApp) RunReceiver(i int) {
 		return
 	}
 
-	if len(a.imapClient) == i { // nil or empty slice or after last element
-		a.imapClient = append(a.imapClient, tmpClinet)
-	} else {
-		a.imapClient = append(a.imapClient[:i+1], a.imapClient[i:]...) // index < len(a)
-		a.imapClient[i] = tmpClinet
-	}
+	/*
+		if len(a.imapClient) == i { // nil or empty slice or after last element
+			a.imapClient = append(a.imapClient, tmpClinet)
+		} else {
+			a.imapClient = append(a.imapClient[:i+1], a.imapClient[i:]...) // index < len(a)
+
+		}
+	*/
+	a.imapClient[i] = tmpClinet
 
 	log.Info("Receiver ", i, " IMAP Connected")
 

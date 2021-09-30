@@ -44,6 +44,7 @@ func main() {
 	if App.config.Imap.Enable {
 		// Запускаем получение почты
 		for i, _ := range App.config.Imap.Receivers {
+			App.imapClient = append(App.imapClient, nil)
 			go App.RunReceiver(i)
 		}
 		log.Info("All receivers are started")

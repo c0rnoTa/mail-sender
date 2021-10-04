@@ -73,7 +73,7 @@ func (a *MyApp) RunReceiver(i int) {
 	log.Info("Start mail receiver", i, ":", a.config.Imap.Receivers[i].Mail)
 
 	// Подключаемся к серверу IMAP
-	log.Info("Receiver ", i, " connecting to imap://", a.config.Imap.Receivers[i].Server)
+	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] connecting to imap://", a.config.Imap.Receivers[i].Server)
 	tmpClinet, err := client.DialTLS(a.config.Imap.Receivers[i].Server, nil)
 	if err != nil {
 		log.Error("IMAP TLS connection returned error: ", err)
@@ -90,33 +90,33 @@ func (a *MyApp) RunReceiver(i int) {
 	*/
 	a.imapClient[i] = tmpClinet
 
-	log.Info("Receiver ", i, " IMAP Connected")
+	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Connected")
 
 	// Don't forget to logout from IMAP server
 	defer func() {
 		err = a.imapClient[i].Logout()
 		if err != nil {
-			log.Error("Receiver ", i, "IMAP Logout error: ", err)
+			log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Logout error: ", err)
 		}
 		err = a.imapClient[i].Terminate()
 		if err != nil {
-			log.Error("Receiver ", i, " IMAP Terminate error: ", err)
+			log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Terminate error: ", err)
 		}
 	}()
 
 	// Login
 	err = a.imapClient[i].Login(a.config.Imap.Receivers[i].Username, a.config.Imap.Receivers[i].Password)
 	if err != nil {
-		log.Error("Receiver ", i, " IMAP login returned error: ", err)
+		log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP login returned error: ", err)
 		return
 	}
-	log.Info("Receiver ", i, " IMAP Logged in as ", a.config.Imap.Receivers[i].Username)
+	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Logged in as ", a.config.Imap.Receivers[i].Username)
 
 	// Выбираем папку INBOX на почтовом сервере
-	log.Infof("Receiver %d Select %s mailbox", i, "INBOX")
+	log.Infof("Receiver [%s] Select %s mailbox", a.config.Imap.Receivers[i].Mail, "INBOX")
 	_, err = a.imapClient[i].Select("INBOX", false)
 	if err != nil {
-		log.Error("Receiver ", i, " IMAP Mailbox folder select returned error: ", err)
+		log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Mailbox folder select returned error: ", err)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (a *MyApp) RunReceiver(i int) {
 
 // ReadNewMail Уведомляем о новых письмах
 func (a *MyApp) ReadNewMail(i int) {
-	log.Info("Receiver ", i, " mailbox pooler starting")
+	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] mailbox pooler starting")
 
 	// Установка критериев отбора писем в папке
 	criteria := imap.NewSearchCriteria()
@@ -147,24 +147,24 @@ func (a *MyApp) ReadNewMail(i int) {
 		// Проверяем новые письма
 		err := a.imapClient[i].Noop()
 		if err != nil {
-			log.Error("Receiver ", i, " IMAP Mailbox refresh returned error: ", err)
-			log.Debug("Receiver ", i, " IMAP connection status: ", a.imapClient[i].State())
+			log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Mailbox refresh returned error: ", err)
+			log.Debug("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP connection status: ", a.imapClient[i].State())
 			return
 		}
 
 		// Получаем UID-ы непрочитанных писем
 		uids, err := a.imapClient[i].Search(criteria)
 		if err != nil {
-			log.Error("Receiver ", i, " IMAP mail search returned error: ", err)
+			log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP mail search returned error: ", err)
 			return
 		}
 		// Если UID-ов нет, то новых писем нет
 		if len(uids) == 0 {
-			log.Debug("Receiver ", i, " No new messages yet.")
+			log.Debug("Receiver [", a.config.Imap.Receivers[i].Mail, "] No new messages yet.")
 			continue
 		}
 
-		log.Info("Receiver ", i, " There are ", len(uids), " new messages")
+		log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] There are ", len(uids), " new messages")
 		seqset := new(imap.SeqSet)
 		seqset.AddNum(uids...)
 
@@ -174,13 +174,13 @@ func (a *MyApp) ReadNewMail(i int) {
 		go func() {
 			err := a.imapClient[i].Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages)
 			if err != nil {
-				log.Error("Receiver ", i, " IMAP mail fetch error: ", err)
+				log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP mail fetch error: ", err)
 			}
 		}()
 
 		// Обрабатываем каждое новое письмо
 		for msg := range messages {
-			log.Info("Receiver ", i, " * "+msg.Envelope.Subject)
+			log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] * "+msg.Envelope.Subject)
 			// Сохраняем информацию о получении письма
 			_, err = DBStmt.Exec(a.config.Imap.Receivers[i].Mail, 1, 1)
 			if err != nil {
@@ -196,7 +196,7 @@ func (a *MyApp) ReadNewMail(i int) {
 			}
 			err := a.imapClient[i].Store(curSeq, imap.FormatFlagsOp(imap.AddFlags, true), []interface{}{markFlag}, nil)
 			if err != nil {
-				log.Error("Receiver ", i, " IMAP mark mail as ", markFlag, " error: ", err)
+				log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP mark mail as ", markFlag, " error: ", err)
 			}
 		}
 	}

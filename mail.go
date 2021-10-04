@@ -42,13 +42,14 @@ func (App *MyApp) sendEmail(wg *sync.WaitGroup, toAddr string, subject string, m
 	defer wg.Done()
 	var status int
 	log.Info("Sending e-mail to ", toAddr)
+	dateHeader := time.Now().Format(time.RFC1123Z)
 	body := fmt.Sprintf("To: %s\r\nFrom: %s\r\nSubject: =?utf-8?B?%s?=\r\n\r\n%s\r\n", toAddr, App.config.Smtp.FromAddr, b64.StdEncoding.EncodeToString([]byte(subject)), message)
 	err := smtp.SendMail(
 		fmt.Sprintf("%s:%d", App.config.Smtp.Server, App.config.Smtp.Port),
 		App.auth,
 		App.config.Smtp.FromAddr,
 		[]string{toAddr},
-		[]byte("MIME-version: 1.0\r\nContent-Type: text/html; charset=\"UTF-8\"\r\n"+body),
+		[]byte("MIME-version: 1.0\r\nContent-Type: text/html; charset=\"UTF-8\"\r\nDate: "+dateHeader+"\r\n"+body),
 	)
 
 	// handling the errors

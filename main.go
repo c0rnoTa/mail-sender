@@ -3,6 +3,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"github.com/emersion/go-imap/client"
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
@@ -26,7 +27,13 @@ func main() {
 	var App MyApp
 
 	// Читаем конфиг
-	App.GetConfigYaml("conf.yml")
+	configPath := flag.String("c", "", "Path to conf.yml")
+	flag.Parse()
+	if *configPath == "" {
+		log.Info("Path to config.yaml not defined. Use -c option")
+		*configPath = "conf.yml"
+	}
+	App.GetConfigYaml(*configPath)
 
 	// Устанавливаем уровень журналирования событий приложения
 	log.SetLevel(App.logLevel)

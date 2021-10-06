@@ -8,6 +8,7 @@ import (
 	"github.com/emersion/go-imap/client"
 	_ "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
+	"math/rand"
 	"net/smtp"
 	"sync"
 	"time"
@@ -81,14 +82,6 @@ func (a *MyApp) RunReceiver(i int) {
 		return
 	}
 
-	/*
-		if len(a.imapClient) == i { // nil or empty slice or after last element
-			a.imapClient = append(a.imapClient, tmpClinet)
-		} else {
-			a.imapClient = append(a.imapClient[:i+1], a.imapClient[i:]...) // index < len(a)
-
-		}
-	*/
 	a.imapClient[i] = tmpClinet
 
 	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Connected")
@@ -144,7 +137,7 @@ func (a *MyApp) ReadNewMail(i int) {
 	}
 
 	// В бесконечном цикле проверяем почтовый ящик на новые письма
-	for range time.NewTicker(time.Duration(a.config.Imap.RefreshTimeout) * time.Second).C {
+	for range time.NewTicker(time.Duration(a.getTimeout(i)) * time.Second).C {
 		// Проверяем новые письма
 		err := a.imapClient[i].Noop()
 		if err != nil {
@@ -202,4 +195,13 @@ func (a *MyApp) ReadNewMail(i int) {
 		}
 	}
 
+}
+
+func (a *MyApp) getTimeout(i int) int64 {
+	timeout := a.config.Imap.RefreshTimeout
+	if a.config.Imap.RefreshRandomize {
+		timeout = timeout*int64(rand.Intn(60)) + 5
+	}
+	log.Debug("Receiver [", a.config.Imap.Receivers[i].Mail, "] Will check INBOX mail every ", timeout, "seconds")
+	return timeout
 }

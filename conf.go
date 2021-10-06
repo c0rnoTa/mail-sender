@@ -33,13 +33,14 @@ type Config struct {
 		Table    string `yaml:"table"`
 	} `yaml:"mysql"`
 	Imap struct {
-		RefreshTimeout int64      `yaml:"refresh"`
-		DeleteMessages bool       `yaml:"delete"`
-		Receivers      []Receiver `yaml:"receivers,flow"`
-		Username       string     `yaml:"username"`
-		Password       string     `yaml:"password"`
-		Server         string     `yaml:"server"`
-		Enable         bool       `yaml:"enable"`
+		RefreshTimeout   int64      `yaml:"refresh"`
+		RefreshRandomize bool       `yaml:"refresh_rand"`
+		DeleteMessages   bool       `yaml:"delete"`
+		Receivers        []Receiver `yaml:"receivers,flow"`
+		Username         string     `yaml:"username"`
+		Password         string     `yaml:"password"`
+		Server           string     `yaml:"server"`
+		Enable           bool       `yaml:"enable"`
 	} `yaml:"imap"`
 	ToList   []string `yaml:"toList,flow"`
 	LogLevel string   `yaml:"loglevel"`

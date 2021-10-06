@@ -7,6 +7,7 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/m1/gospin"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"net/smtp"
@@ -30,9 +31,23 @@ func (App MyApp) RunSender(subject string, msg string) {
 		log.Error("Could not register INSERT statement `sqlMailSend`: ", err)
 		return
 	}
+	// Добавляем текстовый спинер
+	spinner := gospin.New(nil)
 	for _, toAddr := range App.config.ToList {
+		// Ратируем заголовок сообщения
+		spinSubject, err := spinner.Spin(subject)
+		if err != nil {
+			log.Error("Could not spin Subject: ", err)
+			spinSubject = subject
+		}
+		// Ратируем текст сообщения
+		spinMsg, err := spinner.Spin(msg)
+		if err != nil {
+			log.Error("Could not spin Message: ", err)
+			spinMsg = msg
+		}
 		wg.Add(1)
-		go App.sendEmail(&wg, toAddr, subject, msg, DBStmt)
+		go App.sendEmail(&wg, toAddr, spinSubject, spinMsg, DBStmt)
 	}
 	log.Info("Wait until all senders done")
 	wg.Wait()

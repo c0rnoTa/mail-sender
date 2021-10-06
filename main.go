@@ -38,6 +38,8 @@ func main() {
 
 	// Устанавливаем уровень журналирования событий приложения
 	log.SetLevel(App.logLevel)
+	// Set logger channel
+	log.SetOutput(os.Stdout)
 
 	// This is the message to send in the mail
 	subject := "Проверка отправки сообщения"

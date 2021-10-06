@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/smtp"
 	"os"
+	"time"
 )
 
 // Здесь все активные хэндлеры приложения
@@ -52,7 +53,15 @@ func main() {
 		// Запускаем получение почты
 		for i, _ := range App.config.Imap.Receivers {
 			App.imapClient = append(App.imapClient, nil)
-			go App.RunReceiver(i)
+			i := i
+			go func() {
+				// Будет переподключаться, если разорвалось соединение
+				for {
+					App.RunReceiver(i)
+					log.Warn("Receiver [", App.config.Imap.Receivers[i].Mail, "] will reconnect to imap://", App.config.Imap.Receivers[i].Server)
+					time.Sleep(10 * time.Second)
+				}
+			}()
 		}
 		log.Info("All receivers are started")
 	}

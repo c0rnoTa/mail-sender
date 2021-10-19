@@ -17,7 +17,7 @@ smtp:
   # Порт подключения к почтовому серверу по SMTP
   port: 25
   # Разгрев IP-адреса SMTP сервера
-  warm: true
+  warm: false
 
 # Подключение к базе данных MySQL
 mysql:

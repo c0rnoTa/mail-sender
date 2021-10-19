@@ -33,6 +33,31 @@ func (App MyApp) RunSender(subject string, msg string) {
 	}
 	// Добавляем текстовый спинер
 	spinner := gospin.New(nil)
+
+	if App.config.Smtp.Warm {
+		log.Info("Starting infinity loop for SMTP warmup sending messages to random toList")
+		rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
+		for range time.NewTicker(time.Duration(int64(rand.Intn(120))+5) * time.Second).C {
+			// Берём случайный e-mail из списка получателей
+			toAddr := App.config.ToList[rand.Intn(len(App.config.ToList))]
+			// Ратируем заголовок сообщения
+			spinSubject, err := spinner.Spin(subject)
+			if err != nil {
+				log.Error("Could not spin Subject: ", err)
+				spinSubject = subject
+			}
+			// Ратируем текст сообщения
+			spinMsg, err := spinner.Spin(msg)
+			if err != nil {
+				log.Error("Could not spin Message: ", err)
+				spinMsg = msg
+			}
+			wg.Add(1)
+			go App.sendEmail(&wg, toAddr, spinSubject, spinMsg, DBStmt)
+		}
+
+	}
+
 	for _, toAddr := range App.config.ToList {
 		// Ратируем заголовок сообщения
 		spinSubject, err := spinner.Spin(subject)

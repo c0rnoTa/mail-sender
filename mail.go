@@ -37,7 +37,7 @@ func (App MyApp) RunSender(subject string, msg string) {
 	if App.config.Smtp.Warm {
 		log.Info("Starting infinity loop for SMTP warmup sending messages to random toList")
 		rand.Seed(time.Now().Unix()) // initialize global pseudo random generator
-		for range time.NewTicker(time.Duration(int64(rand.Intn(120))+5) * time.Second).C {
+		for range time.NewTicker(time.Duration(int64(rand.Intn(App.config.Smtp.WarmFreq))+5) * time.Second).C {
 			// Берём случайный e-mail из списка получателей
 			toAddr := App.config.ToList[rand.Intn(len(App.config.ToList))]
 			// Ратируем заголовок сообщения

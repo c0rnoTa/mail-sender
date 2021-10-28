@@ -24,6 +24,7 @@ type Config struct {
 		Port     int    `yaml:"port"`
 		Enable   bool   `yaml:"enable"`
 		Warm     bool   `yaml:"warm"`
+		WarmFreq int    `yaml:"warm_freq"`
 	} `yaml:"smtp"`
 	DB struct {
 		Host     string `yaml:"host"`

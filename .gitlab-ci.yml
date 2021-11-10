@@ -17,7 +17,7 @@ stages:
     - echo ${CI_PROJECT_NAME}
     - export PATH=$PATH:/usr/local/go/bin
     - export GOSUMDB=off
-    #- go mod tidy
+    - go mod tidy
     - CGO_ENABLED=0 GOOS=linux go build -a -o ./${CI_PROJECT_NAME} .
   after_script:
     - rm ~/.netrc

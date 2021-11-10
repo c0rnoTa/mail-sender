@@ -158,7 +158,7 @@ func (a *MyApp) RunReceiver(i int) {
 	}
 
 	// Выбираем папку INBOX на почтовом сервере
-	log.Infof("Receiver [%s] Select %s mailbox", a.config.Imap.Receivers[i].Mail, "INBOX")
+	log.Infof("Receiver [%s] Select %s mailbox", a.config.Imap.Receivers[i].Mail, a.config.Imap.Folder)
 	_, err = a.imapClient[i].Select(a.config.Imap.Folder, false)
 	if err != nil {
 		log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Mailbox folder select returned error: ", err)
@@ -264,6 +264,6 @@ func (a *MyApp) getTimeout(i int) int64 {
 		rand.Seed(time.Now().UnixNano())
 		timeout = timeout*int64(rand.Intn(60)) + 1
 	}
-	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] Will check INBOX mail every ", timeout, " seconds")
+	log.Info("Receiver [", a.config.Imap.Receivers[i].Mail, "] Will check ", a.config.Imap.Folder, " mail every ", timeout, " seconds")
 	return timeout
 }

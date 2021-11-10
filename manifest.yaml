@@ -34,7 +34,7 @@ kind: ConfigMap
 metadata:
   name: mail-conf
 data:
-  conf.conf: |
+  conf.yml: |
     loglevel: "info"
 
     smtp:

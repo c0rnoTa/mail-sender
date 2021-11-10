@@ -4,4 +4,4 @@ ADD mail-sender /app/mail-sender
 ADD conf.yml /app/conf.d/conf.yml
 
 WORKDIR app
-CMD ["/app/mail-sender","-c", "/app/conf.d/conf.yaml"]
+CMD ["/app/mail-sender","-c", "/app/conf.d/conf.yml"]

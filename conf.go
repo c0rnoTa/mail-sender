@@ -38,6 +38,7 @@ type Config struct {
 		RefreshTimeout   int64      `yaml:"refresh"`
 		RefreshRandomize bool       `yaml:"refresh_rand"`
 		DeleteMessages   bool       `yaml:"delete"`
+		Folder           string     `yaml:"folder"`
 		Receivers        []Receiver `yaml:"receivers,flow"`
 		Username         string     `yaml:"username"`
 		Password         string     `yaml:"password"`

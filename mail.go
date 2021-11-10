@@ -159,7 +159,7 @@ func (a *MyApp) RunReceiver(i int) {
 
 	// Выбираем папку INBOX на почтовом сервере
 	log.Infof("Receiver [%s] Select %s mailbox", a.config.Imap.Receivers[i].Mail, "INBOX")
-	_, err = a.imapClient[i].Select("INBOX", false)
+	_, err = a.imapClient[i].Select(a.config.Imap.Folder, false)
 	if err != nil {
 		log.Error("Receiver [", a.config.Imap.Receivers[i].Mail, "] IMAP Mailbox folder select returned error: ", err)
 		return

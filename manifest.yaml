@@ -14,10 +14,63 @@ spec:
       labels:
         app: mail-sender
     spec:
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: myregistrykey
       containers:
         - image: __IMAGE_PATH__
           imagePullPolicy: Always
           name: mail-sender
-      restartPolicy: Always
-      imagePullSecrets:
-        - name: myregistrykey
+          volumeMounts:
+            - name: config
+              mountPath: /app/conf.d
+      volumes:
+        - name: config
+          configMap:
+            name: mail-conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mail-conf
+data:
+  conf.conf: |
+    loglevel: "info"
+
+    smtp:
+      enable: true
+      from: "username@yandex.ru"
+      username: "username"
+      password: "secret"
+      server: "smtp.yandex.ru"
+      port: 25
+      warm: false
+      warm_freq: 120
+
+    mysql:
+      host: "mysql"
+      port: 3306
+      username: "root"
+      password: "password"
+      database: "mail"
+      table: "stats"
+
+    imap:
+      enable: true
+      refresh: 5
+      refresh_rand: false
+      delete: false
+      receivers:
+        - mail: "username1@yandex.ru"
+          username: "username1"
+          password: "secret"
+          server: "imap.yandex.ru:993"
+        - mail: "username2@yandex.ru"
+          username: "username2"
+          password: "secret"
+          server: "imap.yandex.ru:993"
+
+    toList:
+      - "receiver1@yandex.ru"
+      - "receiver2@yandex.ru"
+      - "receiver3@yandex.ru"

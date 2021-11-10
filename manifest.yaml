@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mail-sender
+spec:
+  selector:
+    matchLabels:
+      app: mail-sender
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mail-sender
+    spec:
+      containers:
+        - image: __IMAGE_PATH__
+          imagePullPolicy: Always
+          name: mail-sender
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: myregistrykey

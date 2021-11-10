@@ -1,0 +1,62 @@
+stages:
+  - build
+  - push
+
+.build:
+  stage: build
+  image: golang:1.16
+  tags:
+    - worker-01
+  artifacts:
+    expire_in: 2hr
+    paths:
+      - ${CI_PROJECT_NAME}
+  before_script:
+    - echo "machine gitlab.com login $GITLAB_ACCESS_USER password $GITLAB_ACCESS_PASS" >> ~/.netrc
+  script:
+    - echo ${CI_PROJECT_NAME}
+    - export PATH=$PATH:/usr/local/go/bin
+    - export GOSUMDB=off
+    - go mod tidy
+    - CGO_ENABLED=0 GOOS=linux go build -a -o ./${CI_PROJECT_NAME} .
+  after_script:
+    - rm ~/.netrc
+
+.push:
+  stage: push
+  image: docker:latest
+  tags:
+    - worker-01
+  before_script:
+    - docker login -u $GITLAB_ACCESS_USER -p $GITLAB_ACCESS_PASS registry.gitlab.com
+  script:
+    - docker build  --build-arg CI_PROJECT_NAME=${CI_PROJECT_NAME}  -t registry.gitlab.com/${CI_PROJECT_PATH}:${NEW_TAG} .
+    - docker push registry.gitlab.com/${CI_PROJECT_PATH}:${NEW_TAG}
+
+.manifest:
+  stage: push
+  image:
+    name: lachlanevenson/k8s-kubectl:latest
+    entrypoint: [ "/bin/sh","-c" ]
+  tags:
+    - runner-k8s
+  script:
+    # Ставим в манифесте путь к образу контейнера, соответствующий текущему push
+    - sed -i "s!__IMAGE_PATH__!registry.gitlab.com/${CI_PROJECT_PATH}:${NEW_TAG}!" manifest.yaml
+    # Публикуем manifest для live контура
+    - 'curl --user "${GITLAB_ACCESS_USER}:${GITLAB_ACCESS_PASS}" --upload-file manifest.yaml "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${NEW_TAG}/manifest.yaml"'
+
+Build Binary:
+  extends: .build
+
+Push:Docker_Image:
+  extends: .push
+  needs:
+    - Build Binary
+  variables:
+    NEW_TAG: ${CI_BUILD_REF_NAME}
+
+Push:K8S_Manifest:
+  extends: .manifest
+  variables:
+    NEW_TAG: ${CI_BUILD_REF_NAME}
